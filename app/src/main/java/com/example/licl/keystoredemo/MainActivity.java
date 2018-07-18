@@ -4,7 +4,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.licl.keystoredemo.utils.KeyStoreUtil;
@@ -20,18 +19,34 @@ public class MainActivity extends AppCompatActivity {
     Button encrypt_button;
     @BindView(R.id.decrypt)
     Button decrypt_button;
+    @BindView(R.id.set_alias_bt)
+    Button set_alias_bt;
+    @BindView(R.id.alias_et)
+    EditText alias_et;
     @BindView(R.id.pre_text)
     EditText pre_text_et;
     @BindView(R.id.finish_text)
-    TextView finish_tv;
-    final String mAlias ="first_keystore_demo";
+    EditText finish_tv;
+    private String mAlias=null;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
-        mKeyStoreUtil=new KeyStoreUtil(this,mAlias);
+        mKeyStoreUtil= new KeyStoreUtil(this);
+    }
+
+    @OnClick(R.id.set_alias_bt)
+    public void setAlias(){
+        mAlias=alias_et.getText().toString();
+        if(mAlias.isEmpty()){
+            Toast.makeText(this,"please input your alias.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        mKeyStoreUtil.setAlias(mAlias);
         mKeyStoreUtil.createNewKeys();
     }
     @OnClick(R.id.encrypt)
@@ -41,11 +56,12 @@ public class MainActivity extends AppCompatActivity {
         if(initalText.isEmpty()){
             Toast.makeText(this,"please input your text for encrypt.",
                     Toast.LENGTH_LONG).show();
-
+            return;
         }else{
             handledText=mKeyStoreUtil.encryptString(initalText);
+            finish_tv.setText(handledText);
         }
-        finish_tv.setText(handledText);
+
 
     }
     @OnClick(R.id.decrypt)

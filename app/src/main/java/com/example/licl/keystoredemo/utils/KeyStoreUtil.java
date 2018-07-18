@@ -24,20 +24,25 @@ import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.security.auth.x500.X500Principal;
 
+//before use this util you should excute the "createNewKeys()" method.
+
 public class KeyStoreUtil {
 
     private KeyStore mKeyStore;
     private static String TAG="KeyStoreUtil";
     private Context mContext=null;
+
+
+
+
     private String mAlias =null;
-    //单例模式
-    public KeyStoreUtil(Context context,String alias){
+
+    public KeyStoreUtil(Context context){
 
         mContext=context;
-        mAlias=alias;
+
         init();
     }
-
 
     private void init(){
         try{
@@ -78,6 +83,9 @@ public class KeyStoreUtil {
 
     public String encryptString(String initialText){
         try{
+            if (mAlias==null||mAlias.isEmpty()){
+                return "alias is null or empty";
+            }
             if(!mKeyStore.containsAlias(mAlias)){
                 return "keystore does not contain alias";
             }
@@ -102,6 +110,9 @@ public class KeyStoreUtil {
 
     public String decryptString(String cipherText){
         try{
+            if (mAlias==null||mAlias.isEmpty()){
+                return "alias is null or empty";
+            }
             if(!mKeyStore.containsAlias(mAlias)){
                 return "keystore does not contain alias";
             }
@@ -139,5 +150,11 @@ public class KeyStoreUtil {
             e.printStackTrace();
             Log.e(TAG, Log.getStackTraceString(e));
         }
+    }
+    public String getAlias() {
+        return mAlias;
+    }
+    public void setAlias(String alias) {
+        mAlias = alias;
     }
 }
