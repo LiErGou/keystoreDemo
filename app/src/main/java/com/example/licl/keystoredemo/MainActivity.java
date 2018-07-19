@@ -27,6 +27,10 @@ public class MainActivity extends AppCompatActivity {
     EditText pre_text_et;
     @BindView(R.id.finish_text)
     EditText finish_tv;
+    @BindView(R.id.encrypt_file_bt)
+    Button encrypt_file_bt;
+    @BindView(R.id.decrypt_file_bt)
+    Button decrypt_file_bt;
     private String mAlias=null;
 
 
@@ -76,5 +80,18 @@ public class MainActivity extends AppCompatActivity {
 
         handledText=mKeyStoreUtil.decryptString(initalText);
         pre_text_et.setText(handledText);
+    }
+
+    @OnClick(R.id.encrypt_file_bt)
+    public void encryptFile(){
+        String srcFile="/storage/emulated/0/security/photos/2/keystoretest.jpg";
+        String desFile="/storage/emulated/0/security/photos/2/keystoretest.cip";
+        mKeyStoreUtil.encryptFile(srcFile,desFile);
+    }
+    @OnClick(R.id.decrypt_file_bt)
+    public void decryptFile(){
+        String srcFile="/storage/emulated/0/security/photos/2/keystoretest.cip";
+        String desFile="/storage/emulated/0/security/photos/2/keystoretest2.jpg";
+        mKeyStoreUtil.decryptFile(srcFile,desFile);
     }
 }
