@@ -84,14 +84,14 @@ public class MainActivity extends AppCompatActivity {
 
     @OnClick(R.id.encrypt_file_bt)
     public void encryptFile(){
-        String srcFile="/storage/emulated/0/security/photos/2/keystoretest.jpg";
-        String desFile="/storage/emulated/0/security/photos/2/keystoretest.cip";
+        String srcFile="/storage/emulated/0/security/photos/2/test.txt";
+        String desFile="/storage/emulated/0/security/photos/2/test.cip";
         mKeyStoreUtil.encryptFile(srcFile,desFile);
     }
     @OnClick(R.id.decrypt_file_bt)
     public void decryptFile(){
-        String srcFile="/storage/emulated/0/security/photos/2/keystoretest.cip";
-        String desFile="/storage/emulated/0/security/photos/2/keystoretest2.jpg";
+        String srcFile="/storage/emulated/0/security/photos/2/test.cip";
+        String desFile="/storage/emulated/0/security/photos/2/test2.txt";
         mKeyStoreUtil.decryptFile(srcFile,desFile);
     }
 }

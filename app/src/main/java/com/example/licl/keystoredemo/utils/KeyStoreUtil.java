@@ -188,13 +188,7 @@ public class KeyStoreUtil {
             if (fos != null)
                 fos.close();
 
-//            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-//            CipherOutputStream cipherOutputStream = new CipherOutputStream(
-//                    outputStream, inCipher);
-//            cipherOutputStream.write(initialText.getBytes("UTF-8"));
-//            cipherOutputStream.close();
-//            byte [] vals = outputStream.toByteArray();
-//            String finished=Base64.encodeToString(vals, Base64.DEFAULT);
+
             return true;
         }catch (Exception e){
             e.printStackTrace();
