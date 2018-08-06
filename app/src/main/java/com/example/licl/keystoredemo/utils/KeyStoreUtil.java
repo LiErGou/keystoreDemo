@@ -152,7 +152,7 @@ public class KeyStoreUtil {
                               String destionFile){
         int len = 0;
         byte[] buffer = new byte[128];
-        byte[] cipherbuffer = null;
+
         try{
             if (mAlias==null||mAlias.isEmpty()){
                 return false;
@@ -170,26 +170,20 @@ public class KeyStoreUtil {
             inCipher.init(Cipher.ENCRYPT_MODE,publicKey);
 
             FileInputStream fis = new FileInputStream(new File(srcFile));
-
-
-
             FileOutputStream fos = new FileOutputStream(new File(destionFile));
+            CipherOutputStream out = new CipherOutputStream(fos, inCipher);
 
-            // 读取原文，加密并写密文到输出文件。
             while ((len = fis.read(buffer)) != -1) {
-                cipherbuffer = inCipher.update(buffer, 0, len);
-                fos.write(cipherbuffer);
-                fos.flush();
+                out.write(buffer,0,len);
+
+                out.flush();
             }
-            cipherbuffer = inCipher.doFinal();
-            fos.write(cipherbuffer);
-            fos.flush();
 
             if (fis != null)
                 fis.close();
-            if (fos != null)
-                fos.close();
-
+//            if (fos != null)
+//                fos.close();
+            out.close();
 
             return true;
         }catch (Exception e){
@@ -202,7 +196,7 @@ public class KeyStoreUtil {
     public boolean decryptFile(String srcFile,
                               String destionFile){
         int len = 0;
-        byte[] buffer = new byte[256];
+        byte[] buffer = new byte[1024];
         byte[] plainbuffer = null;
 
         try{
@@ -222,11 +216,14 @@ public class KeyStoreUtil {
             CipherInputStream in = new CipherInputStream(fis, output);
             FileOutputStream fos = new FileOutputStream(new File(destionFile));
 
-            byte[] b = new byte[1024];
-            int numberOfBytedRead;
-            while ((numberOfBytedRead = in.read(b)) >= 0) {
-                fos.write(b, 0, numberOfBytedRead);
+            while ((len = in.read(buffer)) >= 0) {
+                fos.write(buffer, 0, len);
+                fos.flush();
             }
+            in.close();
+            fis.close();
+
+            fos.close();
             return true;
         }catch (Exception e){
             Toast.makeText(mContext,"Exception " + e.getMessage() + " occured", Toast.LENGTH_LONG).show();
