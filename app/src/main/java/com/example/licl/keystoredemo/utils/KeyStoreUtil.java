@@ -170,20 +170,23 @@ public class KeyStoreUtil {
             inCipher.init(Cipher.ENCRYPT_MODE,publicKey);
 
             FileInputStream fis = new FileInputStream(new File(srcFile));
-            FileOutputStream fos = new FileOutputStream(new File(destionFile));
-            CipherOutputStream out = new CipherOutputStream(fos, inCipher);
+            File desFile=new File(destionFile);
+            FileOutputStream fos = null;
+            CipherOutputStream out = null;
 
             while ((len = fis.read(buffer)) != -1) {
+                fos=new FileOutputStream(desFile,true);
+                out=new CipherOutputStream(fos, inCipher);
                 out.write(buffer,0,len);
-
                 out.flush();
+                out.close();
             }
 
             if (fis != null)
                 fis.close();
 //            if (fos != null)
 //                fos.close();
-            out.close();
+
 
             return true;
         }catch (Exception e){
@@ -196,7 +199,7 @@ public class KeyStoreUtil {
     public boolean decryptFile(String srcFile,
                               String destionFile){
         int len = 0;
-        byte[] buffer = new byte[1024];
+        byte[] buffer = new byte[256];
         byte[] plainbuffer = null;
 
         try{
@@ -213,17 +216,20 @@ public class KeyStoreUtil {
 
 
             FileInputStream fis = new FileInputStream(new File(srcFile));
-            CipherInputStream in = new CipherInputStream(fis, output);
-            FileOutputStream fos = new FileOutputStream(new File(destionFile));
-
-            while ((len = in.read(buffer)) >= 0) {
-                fos.write(buffer, 0, len);
-                fos.flush();
+//            CipherInputStream in = new CipherInputStream(fis, output);
+            File desFile=new File(destionFile);
+            FileOutputStream fos =null;
+            CipherOutputStream out=null;
+            while ((len = fis.read(buffer)) >= 0) {
+                fos = new FileOutputStream(desFile,true);
+                out=new CipherOutputStream(fos, output);
+                out.write(buffer, 0, len);
+                out.flush();
+                out.close();
             }
-            in.close();
             fis.close();
 
-            fos.close();
+
             return true;
         }catch (Exception e){
             Toast.makeText(mContext,"Exception " + e.getMessage() + " occured", Toast.LENGTH_LONG).show();

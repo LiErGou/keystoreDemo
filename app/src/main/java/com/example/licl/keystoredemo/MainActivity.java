@@ -2,6 +2,7 @@ package com.example.licl.keystoredemo;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -83,15 +84,32 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @OnClick(R.id.encrypt_file_bt)
+
     public void encryptFile(){
-        String srcFile="/storage/emulated/0/security/photos/2/test.txt";
-        String desFile="/storage/emulated/0/security/photos/2/test.cip";
-        mKeyStoreUtil.encryptFile(srcFile,desFile);
+        Toast.makeText(MainActivity.this,"开始加密",Toast.LENGTH_SHORT).show();
+        new Thread(){
+            @Override
+            public void run() {
+                Log.i("MainActivity","开始加密");
+                String srcFile="/storage/emulated/0/security/photos/2/keystoretest.jpg";
+                String desFile="/storage/emulated/0/security/photos/2/keystoretest.cip";
+                mKeyStoreUtil.encryptFile(srcFile,desFile);
+            }
+        }.start();
+
     }
     @OnClick(R.id.decrypt_file_bt)
     public void decryptFile(){
-        String srcFile="/storage/emulated/0/security/photos/2/test.cip";
-        String desFile="/storage/emulated/0/security/photos/2/test2.txt";
-        mKeyStoreUtil.decryptFile(srcFile,desFile);
+        Toast.makeText(MainActivity.this,"开始解密",Toast.LENGTH_SHORT).show();
+        new Thread(){
+            @Override
+            public void run() {
+                Log.i("MainActivity","开始解密");
+                String srcFile="/storage/emulated/0/security/photos/2/keystoretest.cip";
+                String desFile="/storage/emulated/0/security/photos/2/keystoretest2.jpg";
+                mKeyStoreUtil.decryptFile(srcFile,desFile);
+            }
+        }.start();
+
     }
 }
