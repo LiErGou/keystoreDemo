@@ -128,11 +128,11 @@ public class KeyStoreUtil {
         SecureRandom secureRandom=new SecureRandom();
         secureRandom.nextBytes(aesKey);
 
-        byte[] generated=secureRandom.generateSeed(12);
+        byte[] iv=secureRandom.generateSeed(12);
 
         //TODO 需要将iv做持久化
-        String iv=Base64.encodeToString(generated,Base64.DEFAULT);
-        if(iv!=null&&iv.length()!=0){
+
+        if(iv!=null&&iv.length!=0){
             mSharePreferenceUtils.setIv(iv);
         }else{
             Log.e(TAG,"genAESKey Failed iv is null !");
@@ -140,8 +140,8 @@ public class KeyStoreUtil {
         }
 
         //TODO 对加密过的AESKEY做持久化
-        String encryptedAESKey=encryptString(Base64.encodeToString(aesKey,Base64.DEFAULT));
-        if(encryptedAESKey!=null&&encryptedAESKey.length()!=0){
+        byte[] encryptedAESKey=encryptString(aesKey);
+        if(encryptedAESKey!=null&&encryptedAESKey.length!=0){
             mSharePreferenceUtils.setAESKey(encryptedAESKey);
         }else{
             Log.e(TAG,"genAESKey Failed iv is null !");
@@ -161,7 +161,7 @@ public class KeyStoreUtil {
 
     //从sp中读出AESkey
     private SecretKeySpec getAESKey(){
-        String encryptedKey=mSharePreferenceUtils.getAESKey();
+        byte[] encryptedKey=mSharePreferenceUtils.getAESKey();
         byte[] aesKey=decryptString(encryptedKey);
 
         return new SecretKeySpec(aesKey,AES_MODE);
@@ -171,29 +171,29 @@ public class KeyStoreUtil {
                               String destionFile){
 
         int len = 0;
-        byte[] buffer = new byte[128];
+        byte[] buffer = new byte[5*1024];
         try{
 
             Cipher inCipher=Cipher.getInstance(AES_MODE);
-            String iv=mSharePreferenceUtils.getIv();
-            byte[] iv_bytes=Base64.decode(iv,Base64.DEFAULT);
-            inCipher.init(Cipher.ENCRYPT_MODE,getAESKey(),new IvParameterSpec(iv_bytes));
+            byte[] iv=mSharePreferenceUtils.getIv();
+
+            inCipher.init(Cipher.ENCRYPT_MODE,getAESKey(),new IvParameterSpec(iv));
 
             //找到源文件路径以及目标文件路径
             FileInputStream fis = new FileInputStream(new File(srcFile));
             File desFile=new File(destionFile);
             FileOutputStream fos = null;
             CipherOutputStream out = null;
-
+            fos=new FileOutputStream(desFile,true);
+            out=new CipherOutputStream(fos, inCipher);
             while ((len = fis.read(buffer)) != -1) {
                 //对目标文件流加密
-                fos=new FileOutputStream(desFile,true);
-                out=new CipherOutputStream(fos, inCipher);
+
                 out.write(buffer,0,len);
                 out.flush();
-                out.close();
-            }
 
+            }
+            out.close();
             if (fis != null)
                 fis.close();
             return true;
@@ -207,15 +207,15 @@ public class KeyStoreUtil {
     public boolean decryptAES(String srcFile,
                                String destionFile){
         int len = 0;
-        byte[] buffer = new byte[256];
+        byte[] buffer = new byte[5*1024];
         byte[] plainbuffer = null;
         try{
 
-            //选择RSA加密算法进行加密
+
             Cipher output=Cipher.getInstance(AES_MODE);
-            String iv=mSharePreferenceUtils.getIv();
-            byte[] iv_bytes=Base64.decode(iv,Base64.DEFAULT);
-            output.init(Cipher.DECRYPT_MODE,getAESKey(),new IvParameterSpec(iv_bytes));
+            byte[] iv=mSharePreferenceUtils.getIv();
+
+            output.init(Cipher.DECRYPT_MODE,getAESKey(),new IvParameterSpec(iv));
 
 
             FileInputStream fis = new FileInputStream(new File(srcFile));
@@ -223,18 +223,19 @@ public class KeyStoreUtil {
             File desFile=new File(destionFile);
             FileOutputStream fos =null;
             CipherOutputStream out=null;
+            fos = new FileOutputStream(desFile,true);
+            //目标输出流包裹一层加密层
+            out=new CipherOutputStream(fos, output);
             while ((len = fis.read(buffer)) >= 0) {
-                fos = new FileOutputStream(desFile,true);
-                //目标输出流包裹一层加密层
-                out=new CipherOutputStream(fos, output);
                 out.write(buffer, 0, len);
                 out.flush();
-                out.close();
             }
+
+            out.close();
             fis.close();
             return true;
         }catch (Exception e){
-            Toast.makeText(mContext,"Exception " + e.getMessage() + " occured", Toast.LENGTH_LONG).show();
+
             Log.e(TAG, Log.getStackTraceString(e));
             return false;
         }
@@ -242,15 +243,15 @@ public class KeyStoreUtil {
 
 
     //使用秘钥对字符串加密
-    public String encryptString(String initialText){
+    public byte[] encryptString(byte[] initialText){
         try{
             //alias对应的秘钥不存在
             if (mAlias==null||mAlias.isEmpty()){
-                return "alias is null or empty";
+                return null;
             }
             //秘钥库中不存在alias
             if(!mKeyStore.containsAlias(mAlias)){
-                return "keystore does not contain alias";
+                return null;
             }
             KeyStore.PrivateKeyEntry privateKeyEntry=(KeyStore.PrivateKeyEntry) mKeyStore.getEntry(mAlias,null);
             RSAPublicKey publicKey=(RSAPublicKey) privateKeyEntry.getCertificate().getPublicKey();
@@ -261,19 +262,19 @@ public class KeyStoreUtil {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             CipherOutputStream cipherOutputStream = new CipherOutputStream(
                     outputStream, inCipher);
-            cipherOutputStream.write(initialText.getBytes("UTF-8"));
+            cipherOutputStream.write(initialText);
             cipherOutputStream.close();
             byte [] vals = outputStream.toByteArray();
             String finished=Base64.encodeToString(vals, Base64.DEFAULT);
-            return finished;
+            return vals;
         }catch (Exception e){
             e.printStackTrace();
             Log.e(TAG, Log.getStackTraceString(e));
-            return "Encrypt Failed";
+            return null;
         }
     }
 
-    public byte[] decryptString(String cipherText){
+    public byte[] decryptString(byte[] cipherText){
 
         try{
             if (mAlias==null||mAlias.isEmpty()){
@@ -287,8 +288,7 @@ public class KeyStoreUtil {
             Cipher output=Cipher.getInstance(RSA_MODE);
             output.init(Cipher.DECRYPT_MODE,privateKeyEntry.getPrivateKey());
 
-            CipherInputStream cipherInputStream=new CipherInputStream(new ByteArrayInputStream(Base64.decode(cipherText,
-                    Base64.DEFAULT)), output);
+            CipherInputStream cipherInputStream=new CipherInputStream(new ByteArrayInputStream(cipherText), output);
             ArrayList<Byte> values=new ArrayList<>();
             int nextByte;
             while ((nextByte = cipherInputStream.read()) != -1) {
