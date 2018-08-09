@@ -64,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
                     Toast.LENGTH_LONG).show();
             return;
         }else{
-            handledText=mKeyStoreUtil.encryptString(initalText);
+//            handledText=mKeyStoreUtil.encryptString(initalText);
             finish_tv.setText(handledText);
         }
 
@@ -80,8 +80,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        handledText= Base64.encodeToString(mKeyStoreUtil.decryptString(initalText)
-                ,Base64.DEFAULT);
+//        handledText= Base64.encodeToString(mKeyStoreUtil.decryptString(initalText)
+//                ,Base64.DEFAULT);
         pre_text_et.setText(handledText);
     }
 

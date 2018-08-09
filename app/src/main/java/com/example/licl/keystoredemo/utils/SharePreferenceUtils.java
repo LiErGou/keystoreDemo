@@ -1,6 +1,7 @@
 package com.example.licl.keystoredemo.utils;
 
 import android.content.Context;
+import android.util.Base64;
 
 public class SharePreferenceUtils {
     private String iv;
@@ -21,20 +22,20 @@ public class SharePreferenceUtils {
 
 
 
-    public String getIv() {
-        return iv;
+    public byte[] getIv() {
+        return Base64.decode(iv,Base64.DEFAULT);
     }
 
-    public void setIv(String iv) {
-        this.iv = iv;
+    public void setIv(byte[] iv) {
+        this.iv = Base64.encodeToString(iv,Base64.DEFAULT);
     }
 
-    public String getAESKey() {
-        return AESKey;
+    public byte[] getAESKey() {
+        return Base64.decode(AESKey,Base64.DEFAULT);
     }
 
-    public void setAESKey(String AESKey) {
-        this.AESKey = AESKey;
+    public void setAESKey(byte[] AESKey) {
+        this.AESKey = Base64.encodeToString(AESKey,Base64.DEFAULT);;
     }
 
     public String getAlias() {
