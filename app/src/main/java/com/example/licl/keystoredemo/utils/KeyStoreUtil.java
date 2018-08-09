@@ -8,7 +8,6 @@ import android.security.keystore.KeyProperties;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.widget.Toast;
-import android.util.Base64;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -21,11 +20,9 @@ import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.SecureRandom;
-import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.List;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -43,11 +40,11 @@ public class KeyStoreUtil {
     private static final String KEYSTORE_PROVIDER = "AndroidKeyStore";
     private KeyStore mKeyStore;
     private static String TAG="KeyStoreUtil";
-    private Context mContext=null;
+    private Context mContext;
     private SharePreferenceUtils mSharePreferenceUtils;
 
 
-
+    //TODO 让mAlias能够更新且不重复
     private String mAlias ="default";
 
     public KeyStoreUtil(Context context){
@@ -55,7 +52,10 @@ public class KeyStoreUtil {
         mContext=context;
         mSharePreferenceUtils=SharePreferenceUtils.getSharePreferenceUtils(context);
         init();
-        createNewKeys();
+        if(!isAESExsit()){
+            createNewKeys();
+        }
+
     }
 
     private void init(){
@@ -69,7 +69,7 @@ public class KeyStoreUtil {
     }
 
 
-    //创建新的秘钥
+    //创建新RSA的秘钥
     public void createNewKeys(){
         if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.M){
             try {
@@ -82,91 +82,8 @@ public class KeyStoreUtil {
         }
         genAESKey();
     }
-    //api高于23生成秘钥方式
-    @RequiresApi(api = Build.VERSION_CODES.M)
-    private void generateRSAKey_AboveApi23() throws Exception {
-        KeyPairGenerator keyPairGenerator = KeyPairGenerator
-                .getInstance(KeyProperties.KEY_ALGORITHM_RSA, KEYSTORE_PROVIDER);
-        KeyGenParameterSpec keyGenParameterSpec = new KeyGenParameterSpec
-                .Builder(mAlias, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
-                .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
-                .build();
 
-        keyPairGenerator.initialize(keyGenParameterSpec);
-        keyPairGenerator.generateKeyPair();
-
-    }
-    //api低于23生成秘钥
-    public void createNewKeys_BlewApi23(){
-        try{
-            if(!mKeyStore.containsAlias(mAlias)){
-                Calendar start = Calendar.getInstance();
-                Calendar end=Calendar.getInstance();
-                end.add(Calendar.YEAR,1);
-                KeyPairGeneratorSpec spec = new KeyPairGeneratorSpec.Builder(mContext)
-                        .setAlias(mAlias)
-                        .setSubject(new X500Principal("CN=Sample Name, O=Android Authority"))
-                        .setSerialNumber(BigInteger.ONE)
-                        .setStartDate(start.getTime())
-                        .setEndDate(end.getTime())
-                        .build();
-                KeyPairGenerator generator=KeyPairGenerator.getInstance("RSA","AndroidKeyStore");
-                generator.initialize(spec);
-
-                KeyPair keyPair=generator.generateKeyPair();
-            }
-        }catch (Exception e){
-            Toast.makeText(mContext,"Exception " + e.getMessage() + " occured", Toast.LENGTH_LONG).show();
-            Log.e(TAG, Log.getStackTraceString(e));
-        }
-    }
-
-
-    private void genAESKey(){
-        byte[] aesKey=new byte[16];
-        SecureRandom secureRandom=new SecureRandom();
-        secureRandom.nextBytes(aesKey);
-
-        byte[] iv=secureRandom.generateSeed(12);
-
-        //TODO 需要将iv做持久化
-
-        if(iv!=null&&iv.length!=0){
-            mSharePreferenceUtils.setIv(iv);
-        }else{
-            Log.e(TAG,"genAESKey Failed iv is null !");
-            return;
-        }
-
-        //TODO 对加密过的AESKEY做持久化
-        byte[] encryptedAESKey=encryptString(aesKey);
-        if(encryptedAESKey!=null&&encryptedAESKey.length!=0){
-            mSharePreferenceUtils.setAESKey(encryptedAESKey);
-        }else{
-            Log.e(TAG,"genAESKey Failed iv is null !");
-            return;
-        }
-
-
-        if(mAlias!=null&&mAlias.length()!=0){
-            mSharePreferenceUtils.setAlias(mAlias);
-        }else{
-            Log.e(TAG,"genAESKey Failed iv is null !");
-            return;
-        }
-        mSharePreferenceUtils.save();
-    }
-
-
-    //从sp中读出AESkey
-    private SecretKeySpec getAESKey(){
-        byte[] encryptedKey=mSharePreferenceUtils.getAESKey();
-        byte[] aesKey=decryptString(encryptedKey);
-
-        return new SecretKeySpec(aesKey,AES_MODE);
-    }
-
+    //使用AES对文件进行加密
     public boolean encryptAES(String srcFile,
                               String destionFile){
 
@@ -204,14 +121,13 @@ public class KeyStoreUtil {
         }
     }
 
+
+    //使用AES对加密过的文件进行解密
     public boolean decryptAES(String srcFile,
-                               String destionFile){
+                              String destionFile){
         int len = 0;
         byte[] buffer = new byte[5*1024];
-        byte[] plainbuffer = null;
         try{
-
-
             Cipher output=Cipher.getInstance(AES_MODE);
             byte[] iv=mSharePreferenceUtils.getIv();
 
@@ -241,9 +157,106 @@ public class KeyStoreUtil {
         }
     }
 
+    //api高于23 RSA生成秘钥方式
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    private void generateRSAKey_AboveApi23() throws Exception {
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator
+                .getInstance(KeyProperties.KEY_ALGORITHM_RSA, KEYSTORE_PROVIDER);
+        KeyGenParameterSpec keyGenParameterSpec = new KeyGenParameterSpec
+                .Builder(mAlias, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
+                .build();
 
-    //使用秘钥对字符串加密
-    public byte[] encryptString(byte[] initialText){
+        keyPairGenerator.initialize(keyGenParameterSpec);
+        keyPairGenerator.generateKeyPair();
+
+    }
+    //api低于23 RSA生成秘钥
+    private void createNewKeys_BlewApi23(){
+        try{
+            if(!mKeyStore.containsAlias(mAlias)){
+                Calendar start = Calendar.getInstance();
+                Calendar end=Calendar.getInstance();
+                end.add(Calendar.YEAR,1);
+                KeyPairGeneratorSpec spec = new KeyPairGeneratorSpec.Builder(mContext)
+                        .setAlias(mAlias)
+                        .setSubject(new X500Principal("CN=Sample Name, O=Android Authority"))
+                        .setSerialNumber(BigInteger.ONE)
+                        .setStartDate(start.getTime())
+                        .setEndDate(end.getTime())
+                        .build();
+                KeyPairGenerator generator=KeyPairGenerator.getInstance("RSA","AndroidKeyStore");
+                generator.initialize(spec);
+
+                KeyPair keyPair=generator.generateKeyPair();
+            }
+        }catch (Exception e){
+            Toast.makeText(mContext,"Exception " + e.getMessage() + " occured", Toast.LENGTH_LONG).show();
+            Log.e(TAG, Log.getStackTraceString(e));
+        }
+    }
+
+    private boolean isAESExsit(){
+        boolean hasIv=mSharePreferenceUtils.getIv()!=null;
+        boolean hasKey=mSharePreferenceUtils.getAESKey()!=null;
+        boolean hasAlias=mSharePreferenceUtils.getAlias()!=null;
+        return hasAlias && hasIv && hasKey;
+    }
+    //生成AES秘钥以及iv，并对秘钥加密，对他们持久化存储
+    private void genAESKey(){
+        if(isAESExsit()){
+            return;
+        }
+        byte[] aesKey=new byte[16];
+        SecureRandom secureRandom=new SecureRandom();
+        secureRandom.nextBytes(aesKey);     //生成AESKey
+
+        byte[] iv=secureRandom.generateSeed(12);    //生成iv
+
+
+
+        if(iv!=null&&iv.length!=0){
+            mSharePreferenceUtils.setIv(iv);
+        }else{
+            Log.e(TAG,"genAESKey Failed iv is null !");
+            return;
+        }
+
+
+        byte[] encryptedAESKey=encryptString(aesKey);
+        if(encryptedAESKey!=null&&encryptedAESKey.length!=0){
+            mSharePreferenceUtils.setAESKey(encryptedAESKey);
+        }else{
+            Log.e(TAG,"genAESKey Failed iv is null !");
+            return;
+        }
+
+
+        if(mAlias!=null&&mAlias.length()!=0){
+            mSharePreferenceUtils.setAlias(mAlias);
+        }else{
+            Log.e(TAG,"genAESKey Failed iv is null !");
+            return;
+        }
+        mSharePreferenceUtils.save();
+    }
+
+
+    //从sp中读出使用RSA加密后的AESkey，并将其解密
+    private SecretKeySpec getAESKey(){
+        byte[] encryptedKey=mSharePreferenceUtils.getAESKey();
+        mAlias=mSharePreferenceUtils.getAlias();
+        byte[] aesKey=decryptString(encryptedKey);
+
+        return new SecretKeySpec(aesKey,AES_MODE);
+    }
+
+
+
+
+    //使用RSA对byte[]加密的方法
+    private byte[] encryptString(byte[] initialText){
         try{
             //alias对应的秘钥不存在
             if (mAlias==null||mAlias.isEmpty()){
@@ -265,7 +278,6 @@ public class KeyStoreUtil {
             cipherOutputStream.write(initialText);
             cipherOutputStream.close();
             byte [] vals = outputStream.toByteArray();
-            String finished=Base64.encodeToString(vals, Base64.DEFAULT);
             return vals;
         }catch (Exception e){
             e.printStackTrace();
@@ -274,7 +286,9 @@ public class KeyStoreUtil {
         }
     }
 
-    public byte[] decryptString(byte[] cipherText){
+
+    //使用RSA对bute[]解密的方法
+    private byte[] decryptString(byte[] cipherText){
 
         try{
             if (mAlias==null||mAlias.isEmpty()){
@@ -300,102 +314,13 @@ public class KeyStoreUtil {
                 bytes[i] = values.get(i).byteValue();
             }
 
-            String finalText = new String(bytes, 0, bytes.length, "UTF-8");
             return bytes;
         }catch (Exception e){
-            Toast.makeText(mContext,"Exception " + e.getMessage() + " occured", Toast.LENGTH_LONG).show();
+
             Log.e(TAG, Log.getStackTraceString(e));
             return null;
         }
     }
-    //使用密钥对文件进行加密
-    public boolean encryptFile(String srcFile,
-                              String destionFile){
-        int len = 0;
-        byte[] buffer = new byte[128];
-
-        try{
-            //alias对应的秘钥不存在
-            if (mAlias==null||mAlias.isEmpty()){
-                return false;
-            }
-            //密钥库中不存在alias
-            if(!mKeyStore.containsAlias(mAlias)){
-                return false;
-            }
-            KeyStore.PrivateKeyEntry privateKeyEntry=(KeyStore.PrivateKeyEntry
-                    ) mKeyStore.getEntry(mAlias,null);
-            RSAPublicKey publicKey=(RSAPublicKey)
-                    privateKeyEntry.getCertificate().getPublicKey();
-            //选择RSA加密算法进行加密
-            Cipher inCipher=Cipher.getInstance(RSA_MODE, "AndroidOpenSSL");
-            inCipher.init(Cipher.ENCRYPT_MODE,publicKey);
-            //找到源文件路径以及目标文件路径
-            FileInputStream fis = new FileInputStream(new File(srcFile));
-            File desFile=new File(destionFile);
-            FileOutputStream fos = null;
-            CipherOutputStream out = null;
-
-            while ((len = fis.read(buffer)) != -1) {
-                //对目标文件流加密
-                fos=new FileOutputStream(desFile,true);
-                out=new CipherOutputStream(fos, inCipher);
-                out.write(buffer,0,len);
-                out.flush();
-                out.close();
-            }
-
-            if (fis != null)
-                fis.close();
-            return true;
-        }catch (Exception e){
-            e.printStackTrace();
-            Log.e(TAG, Log.getStackTraceString(e));
-            return false;
-        }
-    }
-
-    public boolean decryptFile(String srcFile,
-                              String destionFile){
-        int len = 0;
-        byte[] buffer = new byte[256];
-        byte[] plainbuffer = null;
-        try{
-            if (mAlias==null||mAlias.isEmpty()){
-                return false;
-            }
-            if(!mKeyStore.containsAlias(mAlias)){
-                return false;
-            }
-            KeyStore.PrivateKeyEntry privateKeyEntry=(KeyStore.PrivateKeyEntry) mKeyStore.getEntry(mAlias,null);
-            //选择RSA加密算法进行加密
-            Cipher output=Cipher.getInstance(RSA_MODE);
-            output.init(Cipher.DECRYPT_MODE,privateKeyEntry.getPrivateKey());
-
-
-            FileInputStream fis = new FileInputStream(new File(srcFile));
-
-            File desFile=new File(destionFile);
-            FileOutputStream fos =null;
-            CipherOutputStream out=null;
-            while ((len = fis.read(buffer)) >= 0) {
-                fos = new FileOutputStream(desFile,true);
-                //目标输出流包裹一层加密层
-                out=new CipherOutputStream(fos, output);
-                out.write(buffer, 0, len);
-                out.flush();
-                out.close();
-            }
-            fis.close();
-            return true;
-        }catch (Exception e){
-            Toast.makeText(mContext,"Exception " + e.getMessage() + " occured", Toast.LENGTH_LONG).show();
-            Log.e(TAG, Log.getStackTraceString(e));
-            return false;
-        }
-    }
-
-
 
 
     public void deleteKey(final String alias){
